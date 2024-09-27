@@ -391,6 +391,10 @@ const changeCurrency = (country) => {
 
 // Custom Code
 
+function hasWhiteSpace(s) {
+  return s.indexOf(' ') >= 0;
+}
+
 const addressResource = createResource({
 	url: 'lms_paystack_integration.utils.save_user_address',
 	makeParams(values) {
@@ -426,7 +430,7 @@ const paystackPaymentOptions = createResource({
 			docname: props.name,
 			phone: billingDetails.phone,
 			country: billingDetails.country,
-			callback_url: `${currentDomain}/verify-payment?doctype=${props.type == 'course' ? 'LMS_Course' : 'LMS_Batch'}&docname=${props.name}&billingname=${billingDetails.billing_name}&source=${billingDetails.source}`
+			callback_url: `${currentDomain}/verify-payment?doctype=${props.type == 'course' ? 'LMS_Course' : 'LMS_Batch'}&docname=${props.name}&billingname=${billingDetails.billing_name}&source=${hasWhiteSpace(billingDetails.source) ? billingDetails.source.replaceAll(" ", "_") : billingDetails.source}`
 		}
 	},
 })
