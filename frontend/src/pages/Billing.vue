@@ -144,7 +144,7 @@
 						</div>
 					</div>
 				</div>
-				<Button variant="solid" class="mt-8" @click="generatePaymentLink()">
+				<Button variant="solid" class="mt-8" @click="generatePaystackPaymentLink()">
 					{{ __('Proceed to Payment') }}
 				</Button>
 			</div>
@@ -174,6 +174,7 @@ import NotPermitted from '@/components/NotPermitted.vue'
 import { createToast } from '@/utils/'
 
 const user = inject('$user')
+const currentDomain = window.location.origin;
 
 onMounted(() => {
 	const script = document.createElement('script')
@@ -319,7 +320,7 @@ const validateAddress = () => {
 	]
 	for (let field of mandatoryFields) {
 		if (!billingDetails[field])
-			return (
+		return (
 				'Please enter a valid ' +
 				field
 					.replaceAll('_', ' ')
@@ -369,7 +370,7 @@ const validateAddress = () => {
 		billingDetails.country == 'India' &&
 		!states.includes(billingDetails.state)
 	)
-		return 'Please enter a valid state with correct spelling and the first letter capitalized.'
+	return 'Please enter a valid state with correct spelling and the first letter capitalized.'
 }
 
 const showError = (err) => {
@@ -387,4 +388,67 @@ const changeCurrency = (country) => {
 	billingDetails.country = country
 	orderSummary.reload()
 }
+
+// Custom Code
+
+const addressResource = createResource({
+	url: 'lms_paystack_integration.utils.save_user_address',
+	makeParams(values) {
+		return {
+			address: billingDetails,
+		}
+	},
+})
+
+const saveUserAddress = () => {
+	addressResource.submit(
+		{},
+		{
+			onSuccess(data) {
+				if(data) {
+					return true;
+				} else {
+					return false;
+				}
+			},
+			onError(err) {
+				showError(err)
+			}
+		}
+	)
+};
+
+const paystackPaymentOptions = createResource({
+	url: 'lms_paystack_integration.utils.get_paystack_payment_options',
+	makeParams(values) {
+		return {
+			doctype: props.type == 'course' ? 'LMS Course' : 'LMS Batch',
+			docname: props.name,
+			phone: billingDetails.phone,
+			country: billingDetails.country,
+			callback_url: `${currentDomain}/verify-payment?doctype=${props.type == 'course' ? 'LMS_Course' : 'LMS_Batch'}&docname=${props.name}&billingname=${billingDetails.billing_name}&source=${billingDetails.source}`
+		}
+	},
+})
+
+const generatePaystackPaymentLink = () => {
+	paystackPaymentOptions.submit(
+		{},
+		{
+			validate(params) {
+				return validateAddress()
+			},
+			onSuccess(data) {
+				saveUserAddress();
+				if(data.payment) {
+					window.location.href = data.payment.authorization_url
+				}
+			},
+			onError(err) {
+				showError(err)
+			},
+		}
+	)
+}
+
 </script>
